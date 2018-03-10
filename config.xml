@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+	<name>yadpay</name>
+	<displayName><![CDATA[Оплата Яд-ом]]></displayName>
+	<version><![CDATA[0.0.1]]></version>
+	<description><![CDATA[Оплата Яд-ом (карты и яденьги)]]></description>
+	<author><![CDATA[TrueCoders]]></author>
+	<tab><![CDATA[payments_gateways]]></tab>
+	<confirmUninstall>Точно?</confirmUninstall>
+	<is_configurable>1</is_configurable>
+	<need_instance>1</need_instance>
+	<limited_countries></limited_countries>
+</module>

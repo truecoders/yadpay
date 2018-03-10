@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>yadpay</name>
+    <displayName><![CDATA[Оплата Яндекс]]></displayName>
+    <version><![CDATA[0.0.1]]></version>
+    <description><![CDATA[Этим модулем можно платить с помощью Яндекс.Денег и картами]]></description>
+    <author><![CDATA[Truecoders]]></author>
+    <tab><![CDATA[payments_gateways]]></tab>
+	<confirmUninstall><![CDATA[Точно?]]></confirmUninstall>
+    <is_configurable>1</is_configurable>
+    <need_instance>1</need_instance>
+	<limited_countries></limited_countries>
+</module>
