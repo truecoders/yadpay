@@ -22,6 +22,7 @@ class Yadpay extends PaymentModule
     public $yadClientId;
     public $yadSecret;
     public $yadDescription;
+    public $yadTest;
     public $extra_mail_vars;
 
     public function __construct()
@@ -51,6 +52,9 @@ class Yadpay extends PaymentModule
         }
         if (isset($config['YAD_DESCRIPTION'])) {
             $this->yadDescription = $config['YAD_DESCRIPTION'];
+        }
+        if (isset($config['YAD_TEST'])) {
+            $this->yadTest = $config['YAD_TEST'];
         }
 
 
@@ -91,6 +95,7 @@ class Yadpay extends PaymentModule
         Configuration::updateValue('YAD_STATEMENT_ID', 11);
         Configuration::updateValue('VK_USER_ID', '');
         Configuration::updateValue('VK_ACCESS_TOKEN', '');
+        Configuration::updateValue('YAD_TEST', 0);
         Configuration::updateValue('YAD_DESCRIPTION', 'Вы перейдете на сайт Яндекса для безопасной оплаты. При успешной оплате будет создан заказ и начнется его обработка.');
         return true;
     }
@@ -105,6 +110,7 @@ class Yadpay extends PaymentModule
             && Configuration::deleteByName('YAD_STATEMENT_ID')
             && Configuration::deleteByName('VK_USER_ID')
             && Configuration::deleteByName('VK_ACCESS_TOKEN')
+            && Configuration::deleteByName('YAD_TEST')
             && parent::uninstall()
         ;
     }
@@ -134,6 +140,7 @@ class Yadpay extends PaymentModule
             Configuration::updateValue('YAD_DESCRIPTION', Tools::getValue('YAD_DESCRIPTION'));
             Configuration::updateValue('VK_ACCESS_TOKEN', Tools::getValue('VK_ACCESS_TOKEN'));
             Configuration::updateValue('VK_USER_ID', Tools::getValue('VK_USER_ID'));
+            Configuration::updateValue('YAD_TEST', Tools::getValue('YAD_TEST'));
         }
         $this->_html .= $this->displayConfirmation($this->trans('Обновлено', array(), 'Admin.Notifications.Success'));
     }
@@ -282,7 +289,7 @@ class Yadpay extends PaymentModule
                         'label' => $this->trans('ID статуса заказа', array(), 'Modules.Yadpay.Admin'),
                         'name' => 'YAD_STATEMENT_ID',
                         'required' => true,
-                        'desc' => $this->trans('ID статуса заказа после его оплаты и оформления. Будет присвоен автоматически. Находится здесь:"Параметры магазина/Настройки заказов/Статусы"', array(), 'Modules.Yadpay.Admin'),
+                        'desc' => $this->trans('ID статуса заказа после его оплаты и оформления. Будет присвоен автоматически. Узнать можно здесь: "Параметры магазина/Настройки заказов/Статусы"', array(), 'Modules.Yadpay.Admin'),
                     ),
                     array(
                         'type' => 'textarea',
@@ -292,9 +299,30 @@ class Yadpay extends PaymentModule
                         'required' => false
                     ),
                     array(
+                        'type' => 'radio',
+                        'label' => $this->l('Включить тестовый режим:'),
+                        'name' => 'YAD_TEST',
+                        'class' => 't',
+                        'is_bool' => true,
+                        'is_multishop' => true,
+                        'values' => array(
+                            array(
+                                'id' => 'YAD_TEST_on',
+                                'value' => 1,
+                                'label' => $this->l('ДА')
+                            ),
+                            array(
+                                'id' => 'YAD_TEST_off',
+                                'value' => 0,
+                                'label' => $this->l('НЕТ')
+                            ),
+                        ),
+                        'desc' => $this->l('При тестовом режиме сумма оплаты будет равна 2 рублям, независимо от суммы корзины. Таким образом можно потестировать оплату с разных карт и кошельков. Не забудьте выключить перед началом продаж. Опасайтесь комиссии с разных карт. Например, если оплачивать 2 рубля с карты Яндек.Денег, то комиссия составит 100 рублей.'),
+                    ),
+                    array(
                         'type' => 'text',
                         'label' => $this->trans('USER_ID (ID получателя ВК)', array(), 'Modules.Yadpay.Admin'),
-                        'desc' => $this->trans('Будут приходить сообщения в ВК о начале оплаты, ошибках и успешной оплате. Оставьте пустым для отключения', array(), 'Modules.Yadpay.Admin'),
+                        'desc' => $this->trans('Пример: 193855942. Будут приходить сообщения в ВК о начале оплаты, ошибках и успешной оплате. Оставьте пустым для отключения.', array(), 'Modules.Yadpay.Admin'),
                         'name' => 'VK_USER_ID',
                         'required' => false
                     ),
@@ -340,6 +368,7 @@ class Yadpay extends PaymentModule
             'YAD_DESCRIPTION' => Tools::getValue('YAD_DESCRIPTION', Configuration::get('YAD_DESCRIPTION')),
             'VK_ACCESS_TOKEN' => Tools::getValue('VK_ACCESS_TOKEN', Configuration::get('VK_ACCESS_TOKEN')),
             'VK_USER_ID' => Tools::getValue('VK_USER_ID', Configuration::get('VK_USER_ID')),
+            'YAD_TEST' => Tools::getValue('YAD_TEST', Configuration::get('YAD_TEST')),
         );
     }
 

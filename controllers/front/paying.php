@@ -20,9 +20,9 @@ class YadpayPayingModuleFrontController extends ModuleFrontController
         $client_secret = $this->module->yadSecret;
 
         $cart = $this->context->cart;
-        $cid = (int)$cart->id);
+        $cid = (int)$cart->id;
         $currency = $this->context->currency;
-        $total = (float)$cart->getOrderTotal(true, Cart::BOTH);
+        $total = (int)Configuration::get('YAD_TEST') === 1 ? 2 : (float)$cart->getOrderTotal(true, Cart::BOTH);
 
         $rub_currency_id = Currency::getIdByIsoCode('RUB');
         if ($cart->id_currency != $rub_currency_id) {
@@ -37,7 +37,12 @@ class YadpayPayingModuleFrontController extends ModuleFrontController
         $message = 'Оплата корзины '.$cart->id.' в '.$shop_name.' на сумму '.$total.' руб.';
         $label = $shop_name.'/'.$cart->id;
 
-        $this->module->sendToVk($shop_name.': '.'Началась оплата ' . $total);
+        $this->module->sendToVk($shop_name.': '.'Началась оплата корзины №'. $cid .' на сумму ' . $total . ' руб.');
+
+        if (Tools::getValue('error')) {
+            $this->module->sendToVk($shop_name.': Ошибка оплаты -> '.Tools::getValue('error'));
+            Tools::redirect('index.php?controller=order&step=3');
+        }
 
         //Оплата деньгами
         if (Tools::getValue('by') == 'yad') {
@@ -136,7 +141,7 @@ class YadpayPayingModuleFrontController extends ModuleFrontController
 
                     if ($result->status == 'success') {
                         $this->module->sendToVk($shop_name.': '.'Оплачено Картой ' . $total .' руб. (без 3D secure)');
-                        Tools::redirect($this->context->link->getModuleLink($this->module->name, 'validation', array('cart_id'=> $cid, true));
+                        Tools::redirect($this->context->link->getModuleLink($this->module->name, 'validation', array('cart_id'=> $cid, true)));
                         
                     } elseif ($result->status == 'ext_auth_required') {
                         $url = sprintf("%s?%s", $result->acs_uri, http_build_query($result->acs_params));
