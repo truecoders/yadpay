@@ -22,7 +22,7 @@ class YadpayPayingModuleFrontController extends ModuleFrontController
         $cart = $this->context->cart;
         $cid = (int)$cart->id);
         $currency = $this->context->currency;
-        $total = 2;//(float)$cart->getOrderTotal(true, Cart::BOTH);
+        $total = (float)$cart->getOrderTotal(true, Cart::BOTH);
 
         $rub_currency_id = Currency::getIdByIsoCode('RUB');
         if ($cart->id_currency != $rub_currency_id) {
