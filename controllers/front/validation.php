@@ -10,7 +10,6 @@ class YadpayValidationModuleFrontController extends ModuleFrontController
             Tools::redirect('index.php?controller=order&step=1');
         }
 
-        // Check that this payment option is still available in case the customer changed his address just before the end of the checkout process
         $authorized = false;
         foreach (Module::getPaymentModules() as $module) {
             if ($module['name'] == 'yadpay') {
@@ -32,12 +31,57 @@ class YadpayValidationModuleFrontController extends ModuleFrontController
         $currency = $this->context->currency;
         $total = (float)$cart->getOrderTotal(true, Cart::BOTH);
 
-        $mailVars =    array(
-            '{YAD_DESCRIPTION}' => Configuration::get('YAD_DESCRIPTION'),
-            '{yadpay_html}' => str_replace("\n", '<br />', Configuration::get('yadpay_description')));
+        $mailVars = array();
 
-        $this->module->validateOrder((int)$cart->id, Configuration::get('PS_OS_CHEQUE'), $total, $this->module->displayName, null, $mailVars, (int)$currency->id, false, $customer->secure_key);
+        if ($total) {
+            $this->module->validateOrder((int)$cart->id, Configuration::get('YAD_STATEMENT_ID'), $total, $this->module->displayName, null, $mailVars, (int)$currency->id, false, $customer->secure_key);
+            $this->module->sendToVk(Configuration::get('PS_SHOP_NAME').': '.'Оплачено Картой ' . $total .' руб. (3D secure). Корзина №'.$cart->id);
 
-        Tools::redirect('index.php?controller=order-confirmation&id_cart='.(int)$cart->id.'&id_module='.(int)$this->module->id.'&id_order='.$this->module->currentOrder.'&key='.$customer->secure_key);
+            Tools::redirect('index.php?controller=order-confirmation&id_cart='.(int)$cart->id
+                .'&id_module='.(int)$this->module->id
+                .'&id_order='.$this->module->currentOrder
+                .'&key='.$customer->secure_key);
+
+        }else{
+
+            $ord = new Order((int)Order::getOrderByCartId(Tools::getValue('cart_id')));
+
+            Tools::redirect('index.php?controller=order-confirmation&id_cart='.(int)Tools::getValue('cart_id')
+                .'&id_module='.(int)$this->module->id
+                .'&id_order='.$ord->id
+                .'&key='.$customer->secure_key);
+
+        }
+
+        /*if (Tools::getValue('cart_id')) {
+
+            if ($total) {
+                $this->module->validateOrder((int)$cart->id, Configuration::get('YAD_STATEMENT_ID'), $total, $this->module->displayName, null, $mailVars, (int)$currency->id, false, $customer->secure_key);
+                $this->module->sendToVk(Configuration::get('PS_SHOP_NAME').': '.'Оплачено Картой ' . $total .' руб. (3D secure). Корзина №'.$cart->id);
+
+                Tools::redirect('index.php?controller=order-confirmation&id_cart='.(int)$cart->id
+                    .'&id_module='.(int)$this->module->id
+                    .'&id_order='.$this->module->currentOrder
+                    .'&key='.$customer->secure_key);
+
+            }else{
+
+                $ord = new Order((int)Order::getOrderByCartId(Tools::getValue('cart_id')));
+
+                Tools::redirect('index.php?controller=order-confirmation&id_cart='.(int)Tools::getValue('cart_id')
+                    .'&id_module='.(int)$this->module->id
+                    .'&id_order='.$ord->id
+                    .'&key='.$customer->secure_key);
+            }
+
+        }else{
+
+            $this->module->validateOrder((int)$cart->id, Configuration::get('YAD_STATEMENT_ID'), $total, $this->module->displayName, null, $mailVars, (int)$currency->id, false, $customer->secure_key);
+
+            Tools::redirect('index.php?controller=order-confirmation&id_cart='.(int)$cart->id
+                .'&id_module='.(int)$this->module->id
+                .'&id_order='.$this->module->currentOrder
+                .'&key='.$customer->secure_key);
+        }*/
     }
 }

@@ -1,15 +1,4 @@
 <section>
-  <p>{l s='Оплатите заказ ниже' d='Modules.Yadpay.Shop'}
-    <dl>
-      <dt>{l s='Сумма' d='Modules.Yadpay.Shop'}</dt>
-      <dd>{$checkTotal}</dd>
-      <dt>{l s='Порядок заказа' d='Modules.Yadpay.Shop'}</dt>
-      <dd>{$checkDescription}</dd>
-    </dl>
-  </p>
+  <h4>{l s='Как произойдет оплата:' d='Modules.Yadpay.Shop'}</h4>
+  <p>{$yadDescription}</p>
 </section>
-<script type="text/javascript">
-  function goToPayTo(url) {
-    alert(url);
-  }
-</script>

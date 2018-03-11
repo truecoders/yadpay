@@ -15,6 +15,7 @@ class Yadpay extends PaymentModule
 {
     private $_html = '';
     private $_postErrors = array();
+    private $cipher;
 
     public $yadWallet;
     public $yadRedirectUrl;
@@ -34,7 +35,7 @@ class Yadpay extends PaymentModule
         $this->currencies = true;
         $this->currencies_mode = 'checkbox';
 
-        $config = Configuration::getMultiple(array('YAD_WALLET', 'YAD_REDIRECT_URL', 'YAD_CLIENT_ID', 'YAD_SECRET', 'YAD_DESCRIPTION'));
+        $config = Configuration::getMultiple(array('YAD_WALLET', 'YAD_REDIRECT_URL', 'YAD_CLIENT_ID', 'YAD_SECRET', 'YAD_DESCRIPTION', 'YAD_STATEMENT_ID'));
 
         if (isset($config['YAD_WALLET'])) {
             $this->yadWallet = $config['YAD_WALLET'];
@@ -68,10 +69,7 @@ class Yadpay extends PaymentModule
             $this->warning = $this->trans('Не установлена валюта', array(), 'Modules.Yadpay.Admin');
         }
 
-        $this->extra_mail_vars = array(
-                                    '{YAD_WALLET}' => Configuration::get('YAD_WALLET'),
-                                    '{yadpay_html}' => Tools::nl2br(Configuration::get('YAD_DESCRIPTION'))
-                                );
+        $this->extra_mail_vars = array('{yadpay_html}' => Tools::nl2br(Configuration::get('YAD_DESCRIPTION')));
     }
 
     public function install()
@@ -82,6 +80,21 @@ class Yadpay extends PaymentModule
         && $this->createConfig();
     }
 
+    public function createConfig()
+    {
+        $payingPage = $this->context->link->getModuleLink($this->name, 'paying', array(), true);
+
+        Configuration::updateValue('YAD_WALLET', '410010000000000');
+        Configuration::updateValue('YAD_REDIRECT_URL', $payingPage);
+        Configuration::updateValue('YAD_CLIENT_ID', NULL);
+        Configuration::updateValue('YAD_SECRET', NULL);
+        Configuration::updateValue('YAD_STATEMENT_ID', 11);
+        Configuration::updateValue('VK_USER_ID', '');
+        Configuration::updateValue('VK_ACCESS_TOKEN', '');
+        Configuration::updateValue('YAD_DESCRIPTION', 'Вы перейдете на сайт Яндекса для безопасной оплаты. При успешной оплате будет создан заказ и начнется его обработка.');
+        return true;
+    }
+
     public function uninstall()
     {
         return Configuration::deleteByName('YAD_WALLET')
@@ -89,21 +102,11 @@ class Yadpay extends PaymentModule
             && Configuration::deleteByName('YAD_CLIENT_ID')
             && Configuration::deleteByName('YAD_SECRET')
             && Configuration::deleteByName('YAD_DESCRIPTION')
+            && Configuration::deleteByName('YAD_STATEMENT_ID')
+            && Configuration::deleteByName('VK_USER_ID')
+            && Configuration::deleteByName('VK_ACCESS_TOKEN')
             && parent::uninstall()
         ;
-    }
-
-
-    public function createConfig()
-    {
-        $validationPage = $this->context->link->getModuleLink($this->name, 'validation', array(), true);
-
-        Configuration::updateValue('YAD_WALLET', 'Типа того: 410012022000000');
-        Configuration::updateValue('YAD_REDIRECT_URL', $validationPage);
-        Configuration::updateValue('YAD_CLIENT_ID', NULL);
-        Configuration::updateValue('YAD_SECRET', NULL);
-        Configuration::updateValue('YAD_DESCRIPTION', 'Вы перейдете на сайт Яндекса для оплаты, а затем будет создан заказ');
-        return true;
     }
 
     private function _postValidation()
@@ -127,7 +130,10 @@ class Yadpay extends PaymentModule
             Configuration::updateValue('YAD_WALLET', Tools::getValue('YAD_WALLET'));
             Configuration::updateValue('YAD_CLIENT_ID', Tools::getValue('YAD_CLIENT_ID'));
             Configuration::updateValue('YAD_SECRET', Tools::getValue('YAD_SECRET'));
+            Configuration::updateValue('YAD_STATEMENT_ID', Tools::getValue('YAD_STATEMENT_ID'));
             Configuration::updateValue('YAD_DESCRIPTION', Tools::getValue('YAD_DESCRIPTION'));
+            Configuration::updateValue('VK_ACCESS_TOKEN', Tools::getValue('VK_ACCESS_TOKEN'));
+            Configuration::updateValue('VK_USER_ID', Tools::getValue('VK_USER_ID'));
         }
         $this->_html .= $this->displayConfirmation($this->trans('Обновлено', array(), 'Admin.Notifications.Success'));
     }
@@ -176,27 +182,26 @@ class Yadpay extends PaymentModule
 
         $cart = $this->context->cart;
 
-        $newOptionCard->setModuleName($this->name)
-                ->setCallToActionText($this->trans('Оплата Банковскими картами', array(), 'Modules.Yadpay.Admin'))
-                ->setAction($this->context->link->getModuleLink($this->name, 'paying', array('payby'=>'card'), true))
+        $newOptionCard->setModuleName('Оплата банковской картой')
+                ->setCallToActionText($this->trans('Оплата Банковскими картами Mastercard, Visa и др.', array(), 'Modules.Yadpay.Admin'))
+                ->setAction($this->context->link->getModuleLink($this->name, 'paying', array('by'=>'card'), true))
                 ->setAdditionalInformation($this->fetch('module:yadpay/views/templates/front/payment_infos.tpl'));
 
-        $newOptionYad->setModuleName($this->name)
-                ->setCallToActionText($this->trans('Оплата Яндекс.Деньгами', array(), 'Modules.Yadpay.Admin'))
-                ->setAction($this->context->link->getModuleLink($this->name, 'paying', array('payby'=> 'yad'), true))
+        $newOptionYad->setModuleName('Оплата Яндекс.Деньгами')
+                ->setCallToActionText($this->trans('Оплата из кошелька Яндекс.Денег', array(), 'Modules.Yadpay.Admin'))
+                ->setAction($this->context->link->getModuleLink($this->name, 'paying', array('by'=> 'yad'), true))
                 ->setAdditionalInformation($this->fetch('module:yadpay/views/templates/front/payment_infos.tpl'));
 
-        return [$newOptionYad,$newOptionCard];
+        return array($newOptionYad,$newOptionCard);
     }
 
-    public function hookPaymentReturn($params)
-    {
+    public function hookPaymentReturn($params){
         if (!$this->active) {
             return;
         }
 
         $state = $params['order']->getCurrentState();
-        if (in_array($state, array(Configuration::get('PS_OS_CHEQUE'), Configuration::get('PS_OS_OUTOFSTOCK'), Configuration::get('PS_OS_OUTOFSTOCK_UNPAID')))) {
+        if (in_array($state, array(Configuration::get('PS_OS_OUTOFSTOCK'), Configuration::get('PS_OS_OUTOFSTOCK_UNPAID')))) {
             $this->smarty->assign(array(
                 'total_to_pay' => Tools::displayPrice(
                     $params['order']->getOrdersTotalPaid(),
@@ -215,7 +220,7 @@ class Yadpay extends PaymentModule
         } else {
             $this->smarty->assign('status', 'failed');
         }
-        return $this->fetch('module:ps_checkpayment/views/templates/hook/payment_return.tpl');
+        return 'Ваш заказ оформлен. После проверки мы начнем его обработку.';
     }
 
     public function checkCurrency($cart)
@@ -240,7 +245,7 @@ class Yadpay extends PaymentModule
                 'legend' => array(
                     'title' => $this->trans('Настройки модуля', array(), 'Modules.Yadpay.Admin'),
                     'icon' => 'settings',
-                    'desc' => $this->trans('Для работы с модулем нужно <a href="https://money.yandex.ru/new" target="_blank">открыть кошелек</a> на Яндексе и <a href="https://sp-money.yandex.ru/myservices/new.xml" target="_blank">зарегистрировать приложение</a> на сайте Яндекс.Денег', array(), 'Modules.Checkpayment.Admin'),
+                    'desc' => $this->trans('Для работы с модулем нужно <a href="https://money.yandex.ru/new" target="_blank">открыть кошелек</a> на Яндексе и <a href="https://sp-money.yandex.ru/myservices/new.xml" target="_blank">зарегистрировать приложение</a> на сайте Яндекс.Денег', array(), 'Modules.Yadpay.Admin'),
                 ),
                 'input' => array(
                     array(
@@ -248,7 +253,7 @@ class Yadpay extends PaymentModule
                         'label' => $this->trans('Номер кошелька', array(), 'Modules.Yadpay.Admin'),
                         'name' => 'YAD_WALLET',
                         'required' => true,
-                        'desc' => $this->trans('На этот кошелек придет оплата', array(), 'Modules.Checkpayment.Admin'),
+                        'desc' => $this->trans('На этот кошелек придет оплата', array(), 'Modules.Yadpay.Admin'),
                     ),
                     array(
                         'type' => 'text',
@@ -256,27 +261,48 @@ class Yadpay extends PaymentModule
                         'name' => 'YAD_REDIRECT_URL',
                         'readonly' => true,
                         'required' => true,
-                        'desc' => $this->trans('Эту ссылку нужно вставить в приложение Яндекса', array(), 'Modules.Checkpayment.Admin'),
+                        'desc' => $this->trans('Эту ссылку нужно вставить в приложение Яндекса', array(), 'Modules.Yadpay.Admin'),
                     ),
                     array(
                         'type' => 'text',
                         'label' => $this->trans('Id приложения', array(), 'Modules.Yadpay.Admin'),
                         'name' => 'YAD_CLIENT_ID',
                         'required' => true,
-                        'desc' => $this->trans('Id приложения с сайта Яндекса', array(), 'Modules.Checkpayment.Admin'),
+                        'desc' => $this->trans('Id приложения с сайта Яндекса', array(), 'Modules.Yadpay.Admin'),
                     ),
                     array(
                         'type' => 'textarea',
                         'label' => $this->trans('Секретное слово', array(), 'Modules.Yadpay.Admin'),
                         'name' => 'YAD_SECRET',
                         'required' => true,
-                        'desc' => $this->trans('ID и секретное слово вы получите после <a href="https://sp-money.yandex.ru/myservices/new.xml" target="_blank">регистрации приложения</a> на сайте Яндекс.Денег', array(), 'Modules.Checkpayment.Admin'),
+                        'desc' => $this->trans('ID и секретное слово вы получите после регистрации приложения на сайте Яндекс.Денег', array(), 'Modules.Yadpay.Admin'),
+                    ),
+                    array(
+                        'type' => 'text',
+                        'label' => $this->trans('ID статуса заказа', array(), 'Modules.Yadpay.Admin'),
+                        'name' => 'YAD_STATEMENT_ID',
+                        'required' => true,
+                        'desc' => $this->trans('ID статуса заказа после его оплаты и оформления. Будет присвоен автоматически. Находится здесь:"Параметры магазина/Настройки заказов/Статусы"', array(), 'Modules.Yadpay.Admin'),
                     ),
                     array(
                         'type' => 'textarea',
                         'label' => $this->trans('Описание', array(), 'Modules.Yadpay.Admin'),
-                        'desc' => $this->trans('Описание на странице оформления', array(), 'Modules.Checkpayment.Admin'),
+                        'desc' => $this->trans('Описание на странице оформления', array(), 'Modules.Yadpay.Admin'),
                         'name' => 'YAD_DESCRIPTION',
+                        'required' => false
+                    ),
+                    array(
+                        'type' => 'text',
+                        'label' => $this->trans('USER_ID (ID получателя ВК)', array(), 'Modules.Yadpay.Admin'),
+                        'desc' => $this->trans('Будут приходить сообщения в ВК о начале оплаты, ошибках и успешной оплате. Оставьте пустым для отключения', array(), 'Modules.Yadpay.Admin'),
+                        'name' => 'VK_USER_ID',
+                        'required' => false
+                    ),
+                    array(
+                        'type' => 'textarea',
+                        'label' => $this->trans('ACCESS_TOKEN (токен для отправки)', array(), 'Modules.Yadpay.Admin'),
+                        'desc' => $this->trans('Получить токен можно по инструкции https://habrahabr.ru/post/265563/. Оставьте пустым для отключения', array(), 'Modules.Yadpay.Admin'),
+                        'name' => 'VK_ACCESS_TOKEN',
                         'required' => false
                     ),
                 ),
@@ -285,6 +311,7 @@ class Yadpay extends PaymentModule
                 )
             ),
         );
+
 
         $helper = new HelperForm();
         $helper->show_toolbar = false;
@@ -309,7 +336,10 @@ class Yadpay extends PaymentModule
             'YAD_REDIRECT_URL' => Tools::getValue('YAD_REDIRECT_URL', Configuration::get('YAD_REDIRECT_URL')),
             'YAD_CLIENT_ID' => Tools::getValue('YAD_CLIENT_ID', Configuration::get('YAD_CLIENT_ID')),
             'YAD_SECRET' => Tools::getValue('YAD_SECRET', Configuration::get('YAD_SECRET')),
+            'YAD_STATEMENT_ID' => Tools::getValue('YAD_STATEMENT_ID', Configuration::get('YAD_STATEMENT_ID')),
             'YAD_DESCRIPTION' => Tools::getValue('YAD_DESCRIPTION', Configuration::get('YAD_DESCRIPTION')),
+            'VK_ACCESS_TOKEN' => Tools::getValue('VK_ACCESS_TOKEN', Configuration::get('VK_ACCESS_TOKEN')),
+            'VK_USER_ID' => Tools::getValue('VK_USER_ID', Configuration::get('VK_USER_ID')),
         );
     }
 
@@ -324,20 +354,53 @@ class Yadpay extends PaymentModule
             'Modules.Yadpay.Admin'
         );
 
-        $checkOrder = Configuration::get('YAD_WALLET');
-        if (!$checkOrder) {
-            $checkOrder = '___________';
+
+        $yadDescription = Tools::nl2br(Configuration::get('YAD_DESCRIPTION'));
+        if (!$yadDescription) {
+            $yadDescription = '';
         }
 
-        $checkDescription = Tools::nl2br(Configuration::get('YAD_DESCRIPTION'));
-        if (!$checkDescription) {
-            $checkDescription = '___________';
-        }
+        return ['yadDescription' => $yadDescription];
+    }
 
-        return [
-            'checkTotal' => $total,
-            'checkOrder' => $checkOrder,
-            'checkDescription' => $checkDescription,
-        ];
+    public function getCipher()
+    {
+        if ($this->cipher === null) {
+            if (version_compare(_PS_VERSION_, '1.7.0') > 0) {
+                if (!Configuration::get('PS_CIPHER_ALGORITHM') || !defined('_RIJNDAEL_KEY_')) {
+                    $this->cipher = new PhpEncryptionLegacyEngine(_COOKIE_KEY_, _COOKIE_IV_);
+                } else {
+                    $this->cipher = new PhpEncryptionLegacyEngine(_RIJNDAEL_KEY_, _RIJNDAEL_IV_);
+                }
+            } else {
+                if (!Configuration::get('PS_CIPHER_ALGORITHM') || !defined('_RIJNDAEL_KEY_')) {
+                    $this->cipher = new Blowfish(_COOKIE_KEY_, _COOKIE_IV_);
+                } else {
+                    $this->cipher = new Rijndael(_RIJNDAEL_KEY_, _RIJNDAEL_IV_);
+                }
+            }
+        }
+        return $this->cipher;
+    }
+
+    public function sendToVk($message){
+        if(Configuration::get('VK_USER_ID') && Configuration::get('VK_ACCESS_TOKEN')){
+            $url = 'https://api.vk.com/method/messages.send';
+            $params = array(
+                'user_id' => Configuration::get('VK_USER_ID'),
+                'message' => trim($message),   // Что отправляем
+                'access_token' => Configuration::get('VK_ACCESS_TOKEN'),
+                'v' => '5.37',
+            );
+
+            // В $result вернется id отправленного сообщения
+            $result = file_get_contents($url, false, stream_context_create(array(
+                'http' => array(
+                    'method'  => 'POST',
+                    'header'  => 'Content-type: application/x-www-form-urlencoded',
+                    'content' => http_build_query($params)
+                )
+            )));
+        }
     }
 }
