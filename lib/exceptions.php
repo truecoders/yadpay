@@ -1,10 +1,10 @@
 <?php 
 namespace YandexMoney\Exceptions;
 
-class APIException extends \Exception {
+class YandexAPIException extends \Exception {
 
 }
-class FormatError extends APIException {
+class YandexFormatError extends APIException {
     public function __construct() {
         parent::__construct(
             "Request is missformated", 400
@@ -12,7 +12,7 @@ class FormatError extends APIException {
     }
 }
 
-class ScopeError extends APIException {
+class YandexScopeError extends APIException {
     public function __construct() {
         parent::__construct(
             "Scope error. Obtain new access_token from user"
@@ -21,13 +21,13 @@ class ScopeError extends APIException {
     }
 }
 
-class TokenError extends APIException {
+class YandexTokenError extends APIException {
     public function __construct() {
         parent::__construct("Token is expired or incorrect", 401);
     }
 }
 
-class ServerError extends APIException {
+class YandexServerError extends APIException {
     public function __construct($status_code) {
         parent::__construct("Server error", $status_code);
     }

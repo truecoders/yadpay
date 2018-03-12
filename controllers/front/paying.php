@@ -41,6 +41,7 @@ class YadpayPayingModuleFrontController extends ModuleFrontController
 
         if (Tools::getValue('error')) {
             $this->module->sendToVk($shop_name.': Ошибка оплаты -> '.Tools::getValue('error'));
+            $this->context->controller->errors[] = 'Ошибка оплаты: "'.Tools::getValue('error').'"';
             Tools::redirect('index.php?controller=order&step=3');
         }
 

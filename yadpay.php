@@ -61,7 +61,7 @@ class Yadpay extends PaymentModule
         $this->bootstrap = true;
         parent::__construct();
 
-        $this->displayName = $this->trans('Оплата Картами и Яндекс.Деньгами', array(), 'Modules.Yadpay.Admin');
+        $this->displayName = $this->trans('Оплата Банковской картой или Яндекс.Деньгами', array(), 'Modules.Yadpay.Admin');
         $this->description = $this->trans('Этим модулем можно платить с помощью Яндекс.Денег и банковскими картами', array(), 'Modules.Yadpay.Admin');
         $this->confirmUninstall = $this->trans('Точно?', array(), 'Modules.Yadpay.Admin');
         $this->ps_versions_compliancy = array('min' => '1.7.1.0', 'max' => _PS_VERSION_);
@@ -189,8 +189,8 @@ class Yadpay extends PaymentModule
 
         $cart = $this->context->cart;
 
-        $newOptionCard->setModuleName('Оплата банковской картой')
-                ->setCallToActionText($this->trans('Оплата Банковскими картами Mastercard, Visa и др.', array(), 'Modules.Yadpay.Admin'))
+        $newOptionCard->setModuleName('Оплата Банковской картой')
+                ->setCallToActionText($this->trans('Оплата Банковской картой Mastercard, Visa и др.', array(), 'Modules.Yadpay.Admin'))
                 ->setAction($this->context->link->getModuleLink($this->name, 'paying', array('by'=>'card'), true))
                 ->setAdditionalInformation($this->fetch('module:yadpay/views/templates/front/payment_infos.tpl'));
 

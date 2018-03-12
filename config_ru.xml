@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <module>
     <name>yadpay</name>
-    <displayName><![CDATA[Оплата Яндекс]]></displayName>
+    <displayName><![CDATA[Оплата Банковской картой или Яндекс.Деньгами]]></displayName>
     <version><![CDATA[0.0.1]]></version>
-    <description><![CDATA[Этим модулем можно платить с помощью Яндекс.Денег и картами]]></description>
+    <description><![CDATA[Этим модулем можно платить с помощью Яндекс.Денег и банковскими картами]]></description>
     <author><![CDATA[Truecoders]]></author>
     <tab><![CDATA[payments_gateways]]></tab>
 	<confirmUninstall><![CDATA[Точно?]]></confirmUninstall>
